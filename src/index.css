@@ -177,7 +177,6 @@ textarea {
   border-radius: 12px;
   padding: 0.75rem;
   box-shadow: var(--shadow-soft);
-  cursor: grab;
 }
 
 .task-card--dragging {
@@ -185,9 +184,17 @@ textarea {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35);
 }
 
+.task-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .task-card__title {
   margin: 0;
   font-size: 1rem;
+  cursor: pointer;
 }
 
 .task-card__meta {
@@ -203,6 +210,15 @@ textarea {
   font-size: 0.8rem;
   border-radius: 999px;
   padding: 0.2rem 0.55rem;
+}
+
+.task-card__drag-handle {
+  border: 1px solid var(--border);
+  background: #121b31;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 0.15rem 0.45rem;
+  cursor: grab;
 }
 
 .due-badge {

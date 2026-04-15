@@ -20,7 +20,10 @@ interface BoardProps {
 }
 
 export function Board({ tasks, overStatus, onDragOverStatus, onDragEndTask, onOpenTask }: BoardProps) {
-  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+  );
 
   const handleDragOver = (event: DragOverEvent) => {
     const overId = event.over?.id;
@@ -28,11 +31,13 @@ export function Board({ tasks, overStatus, onDragOverStatus, onDragEndTask, onOp
       onDragOverStatus(null);
       return;
     }
-    if (TASK_STATUSES.includes(overId as TaskStatus)) {
-      onDragOverStatus(overId as TaskStatus);
+    const overValue = String(overId);
+    if (TASK_STATUSES.includes(overValue as TaskStatus)) {
+      onDragOverStatus(overValue as TaskStatus);
       return;
     }
-    onDragOverStatus(null);
+    const overTask = tasks.find((task) => task.id === overValue);
+    onDragOverStatus(overTask?.status ?? null);
   };
 
   return (

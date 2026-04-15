@@ -3,7 +3,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { supabase } from "./lib/supabase";
 import { createTask, deleteTask, fetchTasks, updateTask, updateTaskStatus } from "./api/tasks";
 import { getDueDateMeta } from "./utils/dueDate";
-import type { DueBucket, Task, TaskInput, TaskPriority, TaskStatus } from "./types/task";
+import { TASK_STATUSES, type DueBucket, type Task, type TaskInput, type TaskPriority, type TaskStatus } from "./types/task";
 import { Board } from "./components/Board";
 import { TopBar } from "./components/TopBar";
 import { TaskModal } from "./components/TaskModal";
@@ -115,7 +115,12 @@ export default function App() {
     if (!overId) return;
 
     const taskId = String(event.active.id);
-    const nextStatus = String(overId) as TaskStatus;
+    const overValue = String(overId);
+    const overTask = tasks.find((task) => task.id === overValue);
+    const nextStatus = TASK_STATUSES.includes(overValue as TaskStatus)
+      ? (overValue as TaskStatus)
+      : overTask?.status;
+    if (!nextStatus) return;
     const target = tasks.find((task) => task.id === taskId);
     if (!target || target.status === nextStatus) return;
 
