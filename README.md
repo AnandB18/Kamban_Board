@@ -1,73 +1,55 @@
-# React + TypeScript + Vite
+# Kanban MVP
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dark-themed Kanban board built with React, TypeScript, Supabase, and dnd-kit.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Guest session auto-created via Supabase anonymous auth
+- Four Kanban columns: To Do, In Progress, In Review, Done
+- Create tasks in a modal
+- Edit and delete tasks in a side drawer
+- Drag-and-drop status updates with optimistic UI and rollback on failure
+- Due-date urgency badges:
+  - Overdue: red
+  - Due today: orange
+  - Upcoming (1-7 days): yellow
+  - Later / No due date: gray
+- Top-bar search and filters (title, project, priority, due bucket)
+- Responsive horizontal board scrolling
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React + TypeScript + Vite
+- `@supabase/supabase-js`
+- `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
 
-## Expanding the ESLint configuration
+## Local Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Install dependencies:
+   - `npm install`
+2. Create `.env` from `.env.example` and set:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. Run:
+   - `npm run dev`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Database and RLS
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Run [supabase/schema.sql](supabase/schema.sql) in Supabase SQL editor. This creates the `tasks` table and RLS policies so users only access rows where `user_id = auth.uid()`.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Also ensure Supabase Anonymous Auth is enabled in `Authentication -> Providers`.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- `npm run dev` - Start local dev server
+- `npm run lint` - Run ESLint
+- `npm run build` - Production build
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Deploy (Vercel)
+
+1. Push repo to GitHub.
+2. Import project in Vercel.
+3. Set environment variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+4. Deploy and copy the live URL into your final deliverable document.
