@@ -23,20 +23,27 @@ export function TaskCard({ task, onOpen, disabled = false }: TaskCardProps) {
   };
 
   return (
-    <article ref={setNodeRef} style={style} className={`task-card ${isDragging ? "task-card--dragging" : ""}`}>
+    <article
+      ref={setNodeRef}
+      style={style}
+      className={`task-card ${isDragging ? "task-card--dragging" : ""}`}
+      {...attributes}
+      {...listeners}
+    >
       <div className="task-card__header">
-        <h4 className="task-card__title" onClick={() => onOpen(task.id)}>
-          {task.title}
-        </h4>
+        <h4 className="task-card__title">{task.title}</h4>
         <button
           type="button"
-          className="task-card__drag-handle"
-          aria-label="Drag task"
-          title="Drag task"
-          {...attributes}
-          {...listeners}
+          className="task-card__info-button"
+          aria-label="Open task details"
+          title="Open task details"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(task.id);
+          }}
         >
-          ::: 
+          i
         </button>
       </div>
       <div className="task-card__meta">

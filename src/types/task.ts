@@ -15,6 +15,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }

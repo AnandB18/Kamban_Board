@@ -9,11 +9,14 @@ create table if not exists public.tasks (
   status text not null default 'todo',
   priority text not null default 'normal',
   due_date date,
+  sort_order double precision not null default 1000,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint tasks_status_check check (status in ('todo', 'in_progress', 'in_review', 'done')),
   constraint tasks_priority_check check (priority in ('low', 'normal', 'high'))
 );
+
+alter table public.tasks add column if not exists sort_order double precision not null default 1000;
 
 alter table public.tasks enable row level security;
 
