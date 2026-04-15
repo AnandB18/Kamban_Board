@@ -1,47 +1,61 @@
 import {
   DndContext,
+  DragOverlay,
   MouseSensor,
   TouchSensor,
-  closestCorners,
+  closestCenter,
   useSensor,
   useSensors,
+  type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
 } from "@dnd-kit/core";
-import { TASK_STATUSES, type Task, type TaskStatus } from "../types/task";
+import { TASK_STATUSES, type Task } from "../types/task";
 import { Column } from "./Column";
+import { TaskCardPreview } from "./TaskCard";
 
 interface BoardProps {
   tasks: Task[];
-  overStatus: TaskStatus | null;
-  onDragOverStatus: (status: TaskStatus | null) => void;
+  onDragStartTask: (event: DragStartEvent) => void;
+  onDragOverTask: (event: DragOverEvent) => void;
+  onDragCancelTask: () => void;
   onDragEndTask: (event: DragEndEvent) => void;
   onOpenTask: (taskId: string) => void;
+  activeTaskId: string | null;
 }
 
-export function Board({ tasks, overStatus, onDragOverStatus, onDragEndTask, onOpenTask }: BoardProps) {
-  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
+export function Board({
+  tasks,
+  onDragStartTask,
+  onDragOverTask,
+  onDragCancelTask,
+  onDragEndTask,
+  onOpenTask,
+  activeTaskId,
+}: BoardProps) {
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+  );
+
+  const activeTask = activeTaskId ? tasks.find((task) => task.id === activeTaskId) ?? null : null;
+
+  const handleDragStart = (event: DragStartEvent) => {
+    onDragStartTask(event);
+  };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const overId = event.over?.id;
-    if (!overId) {
-      onDragOverStatus(null);
-      return;
-    }
-    if (TASK_STATUSES.includes(overId as TaskStatus)) {
-      onDragOverStatus(overId as TaskStatus);
-      return;
-    }
-    onDragOverStatus(null);
+    onDragOverTask(event);
   };
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
       onDragOver={handleDragOver}
+      onDragCancel={onDragCancelTask}
       onDragEnd={onDragEndTask}
-      onDragCancel={() => onDragOverStatus(null)}
     >
       <div className="board-scroll">
         <div className="board">
@@ -51,11 +65,13 @@ export function Board({ tasks, overStatus, onDragOverStatus, onDragEndTask, onOp
               status={status}
               tasks={tasks.filter((task) => task.status === status)}
               onOpenTask={onOpenTask}
-              isOver={overStatus === status}
             />
           ))}
         </div>
       </div>
+      <DragOverlay>
+        {activeTask ? <TaskCardPreview task={activeTask} onOpen={onOpenTask} /> : null}
+      </DragOverlay>
     </DndContext>
   );
 }
