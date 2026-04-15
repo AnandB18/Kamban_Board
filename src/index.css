@@ -185,6 +185,11 @@ textarea {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35);
 }
 
+.task-card--overlay {
+  box-shadow: 0 20px 36px rgba(0, 0, 0, 0.4);
+  opacity: 0.95;
+}
+
 .task-card__header {
   display: flex;
   align-items: flex-start;

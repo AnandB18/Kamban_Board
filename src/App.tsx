@@ -21,6 +21,7 @@ export default function App() {
   const [dueFilter, setDueFilter] = useState<"all" | DueBucket>("all");
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [activeDragTaskId, setActiveDragTaskId] = useState<string | null>(null);
   const [overStatus, setOverStatus] = useState<TaskStatus | null>(null);
 
   const sortByOrder = useCallback((list: Task[]) => {
@@ -125,6 +126,7 @@ export default function App() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     if (!userId) return;
+    setActiveDragTaskId(null);
     setOverStatus(null);
     const overId = event.over?.id;
     if (!overId) return;
@@ -218,8 +220,10 @@ export default function App() {
           tasks={sortByOrder(filteredTasks)}
           overStatus={overStatus}
           onDragOverStatus={setOverStatus}
+          onDragStartTask={setActiveDragTaskId}
           onDragEndTask={handleDragEnd}
           onOpenTask={setSelectedTaskId}
+          activeTaskId={activeDragTaskId}
         />
       ) : null}
       <TaskModal open={taskModalOpen} onClose={() => setTaskModalOpen(false)} onCreate={handleCreate} />
