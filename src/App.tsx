@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { DragEndEvent } from "@dnd-kit/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { supabase } from "./lib/supabase";
 import { createTask, deleteTask, fetchTasks, updateTask, updateTaskPositions } from "./api/tasks";
@@ -22,7 +22,7 @@ export default function App() {
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [activeDragTaskId, setActiveDragTaskId] = useState<string | null>(null);
-  const [overStatus, setOverStatus] = useState<TaskStatus | null>(null);
+  const dragOriginTasksRef = useRef<Task[] | null>(null);
 
   const sortByOrder = useCallback((list: Task[]) => {
     return [...list].sort((a, b) => {
@@ -124,78 +124,129 @@ export default function App() {
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    if (!userId) return;
-    setActiveDragTaskId(null);
-    setOverStatus(null);
-    const overId = event.over?.id;
-    if (!overId) return;
+  const moveTaskByDropTarget = useCallback(
+    (source: Task[], activeId: string, overId: string): Task[] => {
+      const activeTask = source.find((task) => task.id === activeId);
+      if (!activeTask) return source;
 
-    const taskId = String(event.active.id);
-    const activeTask = tasks.find((task) => task.id === taskId);
-    if (!activeTask) return;
+      const overTask = source.find((task) => task.id === overId);
+      const destinationStatus = TASK_STATUSES.includes(overId as TaskStatus)
+        ? (overId as TaskStatus)
+        : overTask?.status;
+      if (!destinationStatus) return source;
 
-    const overValue = String(overId);
-    const overTask = tasks.find((task) => task.id === overValue);
-    const nextStatus = TASK_STATUSES.includes(overValue as TaskStatus)
-      ? (overValue as TaskStatus)
-      : overTask?.status;
-    if (!nextStatus) return;
+      const sourceStatus = activeTask.status;
+      const sourceColumn = columnTasks(source, sourceStatus);
+      const destinationColumnBase =
+        sourceStatus === destinationStatus ? sourceColumn : columnTasks(source, destinationStatus);
 
-    const sourceStatus = activeTask.status;
-    const sourceColumn = columnTasks(tasks, sourceStatus);
-    const destinationColumn =
-      sourceStatus === nextStatus ? sourceColumn : columnTasks(tasks.filter((task) => task.id !== taskId), nextStatus);
+      const sourceIndex = sourceColumn.findIndex((task) => task.id === activeId);
+      if (sourceIndex < 0) return source;
 
-    const sourceIndex = sourceColumn.findIndex((task) => task.id === taskId);
-    if (sourceIndex < 0) return;
+      if (sourceStatus === destinationStatus) {
+        if (TASK_STATUSES.includes(overId as TaskStatus)) {
+          const appendIndex = sourceColumn.length - 1;
+          if (sourceIndex === appendIndex) return source;
+          const reordered = arrayMove(sourceColumn, sourceIndex, appendIndex).map((task, index) => ({
+            ...task,
+            sort_order: (index + 1) * 1000,
+          }));
+          return source.map((task) => reordered.find((item) => item.id === task.id) ?? task);
+        }
 
-    const destinationIndex =
-      overTask && overTask.status === nextStatus
-        ? destinationColumn.findIndex((task) => task.id === overTask.id)
-        : destinationColumn.length;
+        const targetIndex = sourceColumn.findIndex((task) => task.id === overId);
+        if (targetIndex < 0 || targetIndex === sourceIndex) return source;
 
-    const updates: Array<{ id: string; status: TaskStatus; sort_order: number }> = [];
+        const reordered = arrayMove(sourceColumn, sourceIndex, targetIndex).map((task, index) => ({
+          ...task,
+          sort_order: (index + 1) * 1000,
+        }));
+        return source.map((task) => reordered.find((item) => item.id === task.id) ?? task);
+      }
 
-    let optimisticTasks = [...tasks];
-    if (sourceStatus === nextStatus) {
-      const targetIndex = destinationIndex < 0 ? sourceColumn.length - 1 : destinationIndex;
-      if (sourceIndex === targetIndex) return;
-      const reordered = arrayMove(sourceColumn, sourceIndex, targetIndex).map((task, index) => ({
-        ...task,
-        sort_order: (index + 1) * 1000,
-      }));
-      updates.push(...reordered.map((task) => ({ id: task.id, status: task.status, sort_order: task.sort_order })));
-      optimisticTasks = tasks.map((task) => reordered.find((item) => item.id === task.id) ?? task);
-    } else {
-      const sourceWithoutActive = sourceColumn.filter((task) => task.id !== taskId).map((task, index) => ({
-        ...task,
-        sort_order: (index + 1) * 1000,
-      }));
-      const movedTask: Task = { ...activeTask, status: nextStatus };
+      const sourceWithoutActive = sourceColumn
+        .filter((task) => task.id !== activeId)
+        .map((task, index) => ({ ...task, sort_order: (index + 1) * 1000 }));
+
+      const destinationColumn = destinationColumnBase.filter((task) => task.id !== activeId);
+      const insertIndex = TASK_STATUSES.includes(overId as TaskStatus)
+        ? destinationColumn.length
+        : destinationColumn.findIndex((task) => task.id === overId);
+      const nextInsertIndex = insertIndex < 0 ? destinationColumn.length : insertIndex;
+      const movedTask = { ...activeTask, status: destinationStatus };
+
       const destinationWithMoved = [...destinationColumn];
-      const insertAt = destinationIndex < 0 ? destinationWithMoved.length : destinationIndex;
-      destinationWithMoved.splice(insertAt, 0, movedTask);
+      destinationWithMoved.splice(nextInsertIndex, 0, movedTask);
       const normalizedDestination = destinationWithMoved.map((task, index) => ({
         ...task,
         sort_order: (index + 1) * 1000,
       }));
-      updates.push(
-        ...sourceWithoutActive.map((task) => ({ id: task.id, status: task.status, sort_order: task.sort_order })),
-        ...normalizedDestination.map((task) => ({ id: task.id, status: task.status, sort_order: task.sort_order })),
-      );
-      const merged = [...sourceWithoutActive, ...normalizedDestination];
-      optimisticTasks = tasks.map((task) => merged.find((item) => item.id === task.id) ?? task);
+
+      const updates = new Map<string, Task>();
+      sourceWithoutActive.forEach((task) => updates.set(task.id, task));
+      normalizedDestination.forEach((task) => updates.set(task.id, task));
+
+      return source.map((task) => updates.get(task.id) ?? task);
+    },
+    [columnTasks],
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const activeId = String(event.active.id);
+    setActiveDragTaskId(activeId);
+    dragOriginTasksRef.current = tasks;
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const overId = event.over?.id;
+    const activeId = String(event.active.id);
+    if (!overId || !activeId) return;
+
+    const overValue = String(overId);
+    setTasks((prev) => moveTaskByDropTarget(prev, activeId, overValue));
+  };
+
+  const handleDragCancel = () => {
+    const originTasks = dragOriginTasksRef.current;
+    if (originTasks) {
+      setTasks(originTasks);
+    }
+    dragOriginTasksRef.current = null;
+    setActiveDragTaskId(null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (!userId) {
+      handleDragCancel();
+      return;
+    }
+    const overId = event.over?.id;
+    const originTasks = dragOriginTasksRef.current ?? tasks;
+    const finalTasks = !overId || !activeDragTaskId ? originTasks : tasks;
+    setActiveDragTaskId(null);
+    dragOriginTasksRef.current = null;
+
+    if (!overId || !activeDragTaskId) {
+      setTasks(originTasks);
+      return;
     }
 
-    const previousTasks = tasks;
-    setTasks(optimisticTasks);
+    const originById = new Map(originTasks.map((task) => [task.id, task]));
+    const updates = finalTasks
+      .filter((task) => {
+        const original = originById.get(task.id);
+        return original ? original.status !== task.status || original.sort_order !== task.sort_order : false;
+      })
+      .map((task) => ({ id: task.id, status: task.status, sort_order: task.sort_order }));
+
+    if (updates.length === 0) return;
+
     try {
       await updateTaskPositions(userId, updates);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Failed to move task.";
       setError(message);
-      setTasks(previousTasks);
+      setTasks(originTasks);
     }
   };
 
@@ -218,9 +269,9 @@ export default function App() {
       {!loading ? (
         <Board
           tasks={sortByOrder(filteredTasks)}
-          overStatus={overStatus}
-          onDragOverStatus={setOverStatus}
-          onDragStartTask={setActiveDragTaskId}
+          onDragStartTask={handleDragStart}
+          onDragOverTask={handleDragOver}
+          onDragCancelTask={handleDragCancel}
           onDragEndTask={handleDragEnd}
           onOpenTask={setSelectedTaskId}
           activeTaskId={activeDragTaskId}
