@@ -1,4 +1,4 @@
-import type { DueBucket } from "../types/task";
+import type { DueBucket, TaskStatus } from "../types/task";
 
 interface DueDateMeta {
   bucket: DueBucket;
@@ -33,9 +33,20 @@ function formatFullDate(value: string): string {
   });
 }
 
-export function getDueDateMeta(dueDate: string | null): DueDateMeta {
+export function getDueDateMeta(dueDate: string | null, status?: TaskStatus): DueDateMeta {
   if (!dueDate) {
     return { bucket: "no_due", label: "No due date", tooltip: null };
+  }
+
+  // Completed tasks should not be labeled as overdue/today/upcoming.
+  // We still keep the underlying due_date, so if the task is moved out of "done"
+  // the urgency label will reappear automatically.
+  if (status === "done") {
+    return {
+      bucket: "later",
+      label: `Due ${formatDisplayDate(dueDate)}`,
+      tooltip: formatFullDate(dueDate),
+    };
   }
 
   const today = startOfDay(new Date());

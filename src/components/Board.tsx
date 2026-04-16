@@ -58,15 +58,17 @@ export function Board({
       onDragEnd={onDragEndTask}
     >
       <div className="board-scroll">
-        <div className="board">
-          {TASK_STATUSES.map((status) => (
-            <Column
-              key={status}
-              status={status}
-              tasks={tasks.filter((task) => task.status === status)}
-              onOpenTask={onOpenTask}
-            />
-          ))}
+        <div className="board-tile">
+          <div className="board">
+            {TASK_STATUSES.map((status) => (
+              <Column
+                key={status}
+                status={status}
+                tasks={tasks.filter((task) => task.status === status)}
+                onOpenTask={onOpenTask}
+              />
+            ))}
+          </div>
         </div>
       </div>
       <DragOverlay>

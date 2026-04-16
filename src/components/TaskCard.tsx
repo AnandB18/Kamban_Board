@@ -19,29 +19,25 @@ interface TaskCardBodyProps {
 }
 
 function TaskCardBody({ task, onOpen, className, draggableBindings, style }: TaskCardBodyProps) {
-  const due = getDueDateMeta(task.due_date);
+  const due = getDueDateMeta(task.due_date, task.status);
 
   return (
     <article
       style={style}
       className={className}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(task.id)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(task.id);
+        }
+      }}
       {...(draggableBindings ?? {})}
     >
       <div className="task-card__header">
         <h4 className="task-card__title">{task.title}</h4>
-        <button
-          type="button"
-          className="task-card__info-button"
-          aria-label="Open task details"
-          title="Open task details"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen(task.id);
-          }}
-        >
-          i
-        </button>
       </div>
       <div className="task-card__meta">
         <span className={`due-badge due-badge--${due.bucket}`} title={due.tooltip ?? undefined}>

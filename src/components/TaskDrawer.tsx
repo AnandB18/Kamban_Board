@@ -5,7 +5,6 @@ import { TaskFormFields, type TaskFormValue } from "./TaskFormFields";
 
 interface TaskDrawerProps {
   task: Task | null;
-  onClose: () => void;
   onSave: (taskId: string, updates: Partial<TaskInput>) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
 }
@@ -21,7 +20,7 @@ function toForm(task: Task): TaskFormValue {
   };
 }
 
-export function TaskDrawer({ task, onClose, onSave, onDelete }: TaskDrawerProps) {
+export function TaskDrawer({ task, onSave, onDelete }: TaskDrawerProps) {
   const [form, setForm] = useState<TaskFormValue | null>(task ? toForm(task) : null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -30,9 +29,20 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: TaskDrawerProps)
     setForm(task ? toForm(task) : null);
   }, [task]);
 
-  if (!task || !form) return null;
+  if (!task || !form) {
+    return (
+      <aside className="drawer" aria-label="Task details">
+        <div className="panel panel--drawer">
+          <div className="panel__header">
+            <h2>Task details</h2>
+          </div>
+          <p className="drawer__empty">Select a card to view and edit details.</p>
+        </div>
+      </aside>
+    );
+  }
 
-  const due = getDueDateMeta(task.due_date);
+  const due = getDueDateMeta(task.due_date, task.status);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -46,7 +56,6 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: TaskDrawerProps)
         priority: form.priority,
         due_date: form.due_date || null,
       });
-      onClose();
     } finally {
       setSaving(false);
     }
@@ -57,20 +66,16 @@ export function TaskDrawer({ task, onClose, onSave, onDelete }: TaskDrawerProps)
     setDeleting(true);
     try {
       await onDelete(task.id);
-      onClose();
     } finally {
       setDeleting(false);
     }
   };
 
   return (
-    <aside className="drawer" role="dialog" aria-label="Task details">
+    <aside className="drawer" aria-label="Task details">
       <div className="panel panel--drawer">
         <div className="panel__header">
           <h2>Task details</h2>
-          <button className="btn" type="button" onClick={onClose}>
-            Close
-          </button>
         </div>
         <div className="drawer__meta">
           <span className={`due-badge due-badge--${due.bucket}`} title={due.tooltip ?? undefined}>

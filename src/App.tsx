@@ -74,7 +74,7 @@ export default function App() {
     const projectValue = projectQuery.trim().toLowerCase();
 
     return tasks.filter((task) => {
-      const dueMeta = getDueDateMeta(task.due_date);
+      const dueMeta = getDueDateMeta(task.due_date, task.status);
       const matchesSearch = !searchValue || task.title.toLowerCase().includes(searchValue);
       const matchesProject = !projectValue || (task.project ?? "").toLowerCase().includes(projectValue);
       const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
@@ -117,6 +117,7 @@ export default function App() {
     try {
       await deleteTask(userId, taskId);
       setTasks((prev) => prev.filter((task) => task.id !== taskId));
+      setSelectedTaskId((prev) => (prev === taskId ? null : prev));
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Failed to delete task.";
       setError(message);
@@ -194,6 +195,7 @@ export default function App() {
   const handleDragStart = (event: DragStartEvent) => {
     const activeId = String(event.active.id);
     setActiveDragTaskId(activeId);
+    setSelectedTaskId(activeId);
     dragOriginTasksRef.current = tasks;
   };
 
@@ -263,27 +265,26 @@ export default function App() {
         onProjectQueryChange={setProjectQuery}
         onCreateClick={() => setTaskModalOpen(true)}
       />
-      {error ? <p className="feedback feedback--error">{error}</p> : null}
-      {loading ? <p className="feedback">Loading board...</p> : null}
-      {!loading && filteredTasks.length === 0 ? <p className="feedback">No tasks match your filters.</p> : null}
-      {!loading ? (
-        <Board
-          tasks={sortByOrder(filteredTasks)}
-          onDragStartTask={handleDragStart}
-          onDragOverTask={handleDragOver}
-          onDragCancelTask={handleDragCancel}
-          onDragEndTask={handleDragEnd}
-          onOpenTask={setSelectedTaskId}
-          activeTaskId={activeDragTaskId}
-        />
-      ) : null}
+      <div className="app-layout">
+        <TaskDrawer task={selectedTask} onSave={handleSave} onDelete={handleDelete} />
+        <section className="app-main">
+          {error ? <p className="feedback feedback--error">{error}</p> : null}
+          {loading ? <p className="feedback">Loading board...</p> : null}
+          {!loading && filteredTasks.length === 0 ? <p className="feedback">No tasks match your filters.</p> : null}
+          {!loading ? (
+            <Board
+              tasks={sortByOrder(filteredTasks)}
+              onDragStartTask={handleDragStart}
+              onDragOverTask={handleDragOver}
+              onDragCancelTask={handleDragCancel}
+              onDragEndTask={handleDragEnd}
+              onOpenTask={setSelectedTaskId}
+              activeTaskId={activeDragTaskId}
+            />
+          ) : null}
+        </section>
+      </div>
       <TaskModal open={taskModalOpen} onClose={() => setTaskModalOpen(false)} onCreate={handleCreate} />
-      <TaskDrawer
-        task={selectedTask}
-        onClose={() => setSelectedTaskId(null)}
-        onSave={handleSave}
-        onDelete={handleDelete}
-      />
     </main>
   );
 }
